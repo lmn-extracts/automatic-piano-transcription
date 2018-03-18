@@ -118,13 +118,14 @@ def detectKeyboard(img):
 		    cv2.line(img,(int(x_plot_1*ratio),int(y_plot_1*ratio)), (int(x_plot_2*ratio),int(y_plot_2*ratio)),(0,255,0),2)
 		    cv2.line(resized,(x_plot_1,y_plot_1),(x_plot_2,y_plot_2),(0,255,0),1)
 	cv2.imshow('res',resized)
-	cv2.imwrite('result.jpg', img)
+	cv2.imwrite('result.jpg', img[int(topX_cached*ratio):int(bottomX_cached*ratio),:,:])
 	cv2.waitKey(0)
 	cv2.destroyAllWindows()
 	return
 
 def main():
-	img = cv2.imread('keyboard-1.jpg')
+	# img = cv2.imread('keyboard-1.jpg')
+	img = cv2.imread('data/pos1.jpg')
 	detectKeyboard(img)
 	
 	return
