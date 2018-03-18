@@ -1,6 +1,44 @@
 import numpy as np
 import cv2
 import itertools as it
+import imutils
+class ShapeDetector:
+    def __init__(self):
+        pass
+
+    def detect(self, c):
+        # initialize the shape name and approximate the contour
+        shape = "unidentified"
+        peri = cv2.arcLength(c, True)
+        approx = cv2.approxPolyDP(c, 0.04 * peri, True)
+
+        # if the shape is a triangle, it will have 3 vertices
+        if len(approx) == 3:
+            shape = "triangle"
+
+        # if the shape has 4 vertices, it is either a square or
+        # a rectangle
+        elif len(approx) == 4:
+            # compute the bounding box of the contour and use the
+            # bounding box to compute the aspect ratio
+            (x, y, w, h) = cv2.boundingRect(approx)
+            ar = w / float(h)
+
+            # a square will have an aspect ratio that is approximately
+            # equal to one, otherwise, the shape is a rectangle
+            shape = "square" if ar >= 0.95 and ar <= 1.05 else "rectangle"
+
+        # if the shape is a pentagon, it will have 5 vertices
+        elif len(approx) == 5:
+            shape = "pentagon"
+
+        # otherwise, we assume the shape is a circle
+        else:
+            shape = "circle"
+
+        # return the name of the shape
+        return shape
+
 
 def get_Y_indices(line1,line2,img):
 	for rho,theta in line1:
@@ -54,12 +92,12 @@ def detectKeyboard(img):
 	# Resize to 160x120 to make processing faster
 	resized = cv2.resize(img, (160,120), cv2.INTER_AREA)
 	ratio = img.shape[0] / float(resized.shape[0])
-	
+
 	# Binarize image
 	gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
 	_, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
 	sobely = cv2.Scharr(thresh,cv2.CV_64F,0,1)
-	
+
 	# Identify horizontal lines and filter out lines that are off by more than 5 degrees
 	lines = cv2.HoughLines(sobely.astype(np.uint8), 1, np.pi/2, 100)
 	lines = [l for l in lines if abs(l[0][1]-np.pi/2) < np.pi/180.0*5]
@@ -134,40 +172,165 @@ def detectShape(c):
 		shape = "square" if ar>=0.95 and ar<=1.05 else "rectangle"
 	return shape
 
-def detectKeys(img):
+def detectKeys(img, show=False):
 	# Resize to 160x120 to make processing faster
 	# resized = cv2.resize(img, (160,120), cv2.INTER_AREA)
 	# ratio = img.shape[0] / float(resized.shape[0])
+	image = img[10:,:].copy()
+	#
+	# if show:
+	# 	ind = 0
+	# 	cv2.imwrite(str(ind) + '.jpg', image)
+	# 	ind+=1
+	#
+	# convert the resized image to grayscale, blur it slightly,
+	# and threshold it
+	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+	blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+	thresh = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY_INV)[1]
 
-	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-	blurred = cv2.GaussianBlur(gray, (1,1), 0)
-	thresh = cv2.threshold(blurred, 60, 255, cv2.THRESH_BINARY)[1]
-	kernel = np.ones((5,5), np.uint8)
-	thresh = cv2.erode(thresh,kernel,iterations=2)
+	# find contours in the thresholded image and initialize the
+	# shape detector
+	cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
+	cv2.CHAIN_APPROX_SIMPLE)
+	cnts = cnts[0] if imutils.is_cv2() else cnts[1]
+	sd = ShapeDetector()
 
-	cnts = cv2.findContours(thresh.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-	print len(cnts[0])
-	for c  in cnts[1]:
-		shape = detectShape(c)
-		print shape
+	num_black_keys = 0
+	black_key_properties = []
+	# loop over the contours
+	for c in cnts:
+	# compute the center of the contour, then detect the name of the
+	# shape using only the contour
+		M = cv2.moments(c)
+		if M["m00"] == 0:
+			continue
+		cX = int((M["m10"] / M["m00"]))
+		cY = int((M["m01"] / M["m00"]))
+		shape = sd.detect(c)
+		# if shape == "rectangle":
+		num_black_keys += 1
+		# multiply the contour (x, y)-coordinates by the resize ratio,
+		# then draw the contours and the name of the shape on the image
 		c = c.astype("float")
-		c = c.astype(int)
-		if shape == 'rectangle':
-			cv2.drawContours(img, [c], -1, (255,0,0), 3)
-			# cv2.imshow('res',img)
-			# cv2.waitKey(0)
+		c = c.astype("int")
+		print("C")
+		#if shape == 'rectangle':
+		# cv2.drawContours(img, [c], -1, (255,0,0), 3)
+		# cv2.imshow('res',img)
+		# cv2.waitKey(0)
+		#
+		# # cv2.drawContours(image, [c], -1, (0, 255, 0), 2)
+		# cv2.fillPoly(image, [c], (0, 255, 0))
+
+		x,y,w,h = cv2.boundingRect(c)
+
+		pts = np.array([[x,y],[x+w,y+h]])
+
+		black_key_properties.append((x,y, w,h))
+		# cv2.rectangle(image, (x,y), (x+w-1, y+h-1), (0,255,0), thickness=-1)
 
 
-	cv2.imshow('res',thresh)
-	cv2.imshow('rese',img)
-	cv2.waitKey(0)
-	cv2.destroyAllWindows()	
-	return
+	if show:
+		cv2.imwrite(str(ind) + '.jpg', image)
+		ind+=1
+	return num_black_keys, black_key_properties
+
+
+
+	# gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+	# blurred = cv2.GaussianBlur(gray, (1,1), 0)
+	# thresh = cv2.threshold(blurred, 60, 255, cv2.THRESH_BINARY)[1]
+	# kernel = np.ones((5,5), np.uint8)
+	# thresh = cv2.erode(thresh,kernel,iterations=2)
+	#
+	# cnts = cv2.findContours(thresh.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+	# print len(cnts[0])
+	# for c  in cnts[1]:
+	# 	shape = detectShape(c)
+	# 	print shape
+	# 	c = c.astype("float")
+	# 	c = c.astype(int)
+	# 	if shape == 'rectangle':
+	# 		cv2.drawContours(img, [c], -1, (255,0,0), 3)
+	# 		cv2.imshow('res',img)
+	# 		cv2.waitKey(0)
+	#
+	#
+	# cv2.imshow('res',thresh)
+	# cv2.imshow('rese',img)
+	# cv2.waitKey(0)
+	# cv2.destroyAllWindows()
+	# return
+
+def assign_while_keys(num_black_keys, black_key_properties):
+    #black_keys_pattern = ['D#', 'F#', 'G#', 'A#', 'C#']
+    if num_black_keys < 5:
+        return
+    num_pattern = int(num_black_keys/5)
+    black_key_mid_pts = []
+    for i in range(6):
+        black_key_property = black_key_properties[i]
+        black_key_mid_pt = (black_key_property[0]+ black_key_property[2])/2.
+        black_key_mid_pts.append(black_key_mid_pt)
+
+    diffs = []
+    for i in range(5):
+        diff = -(black_key_mid_pts[i+1] - black_key_mid_pts[i])
+        diffs.append((diff, i))
+    print("diffs", diffs)
+    diffs.sort(key = lambda x: x[0])
+    big_diffs_idx1, big_diffs_idx2 = diffs[-1][1], diffs[-2][1]
+    sorted_diffs_idx = sorted([big_diffs_idx1, big_diffs_idx2])
+    print(sorted_diffs_idx)
+
+    if abs(big_diffs_idx1 - big_diffs_idx2) == 2:
+        if sorted_diffs_idx[0] == 0:
+            pattern = ['A#', 'C#', 'D#', 'F#', 'G#']
+        elif sorted_diffs_idx[0] == 1:
+            pattern = ['G#', 'A#', 'C#', 'D#', 'F#']
+        elif sorted_diffs_idx[0] == 2:
+            pattern = ['F#', 'G#', 'A#', 'C#', 'D#']
+    elif abs(big_diffs_idx1 - big_diffs_idx2) == 3:
+        if sorted_diffs_idx[0] == 0:
+            pattern = ['D#', 'F#', 'G#', 'A#', 'C#']
+        elif sorted_diffs_idx[0] == 1:
+            pattern = ['C#', 'D#', 'F#', 'G#', 'A#']
+	pattern.reverse()
+    #print(pattern)
+    return pattern
+
+def detect_white_keys(img, num_black_keys, black_key_properties, pattern):
+	num_pattern = num_black_keys/5
+	black_notes = pattern*num_pattern + pattern[:num_black_keys%5]
+	print "black_notes", black_notes
+	for i in range(num_black_keys):
+		x,y,w,h = black_key_properties[i]
+		cv2.putText(img, black_notes[i], (x+w/2,y+h/2), 4, 0.25, (0,0,150))
+		#cv2.putText(img, '#', (x+w/2,y+h/2+1), 4, 0.25, (0,0,150))
+
+	cv2.imshow('res',img)
+ 	cv2.waitKey(0)
+	for i in range(num_black_keys):
+		x,y,w,h = black_key_properties[i]
+		pt1 = (int(x+w/2), y)
+		pt2 = (int(x+w/2), img.shape[0])
+		cv2.line(img,pt1,pt2,(0,255,0),1)
+		#cv2.clipLine(img, pt1, pt2)
+
+		if i>0 and black_notes[i] == 'F#' or 'C#':
+			prevx, prevy, prevw, prevh = black_key_properties[i-1]
+
+			pt1 = (int((x+w/2.+ prevx+prevw/2.)/2.), int((y+prevy)/2.))
+			pt2 = (int((x+w/2.+ prevx+prevw/2.)/2.), img.shape[0])
+			cv2.line(img,pt1,pt2,(0,255,0),1)
+	cv2.imshow('res',img)
+ 	cv2.waitKey(0)
 
 def main():
-	# img = cv2.imread('keyboard-2.jpg')
+	#img = cv2.imread('keyboard-2.jpg')
 	# detectKeyboard(img)
-	img = cv2.imread('result.jpg')
+	img = cv2.imread('img.png')
 	# gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 	# blurred = cv2.GaussianBlur(gray, (3,3), 0)
 	# thresh = cv2.threshold(blurred, 60, 255, cv2.THRESH_BINARY)[1]
@@ -182,7 +345,12 @@ def main():
 	# cv2.imshow('sob',img_erosion)
 	# cv2.waitKey(0)
 	# cv2.destroyAllWindows()
-	detectKeys(img)
+	num_black_keys, black_key_properties = detectKeys(img)
+	pattern = assign_while_keys(num_black_keys, black_key_properties)
+	detect_white_keys(img, num_black_keys, black_key_properties, pattern)
+	print(pattern)
+
+
 	return
 
 if __name__ == '__main__':
