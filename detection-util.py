@@ -179,7 +179,7 @@ def detectKeyboard(img):
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-	return
+    return
 
 
 
@@ -237,19 +237,22 @@ def processedFrame(image):
 
     maxBlackKeys = 0
     candidate_keyboards = []
+    keyboard = None
     for l1, l2 in pairs:
         warped = getPerspectiveTransform(image, np.array([(l1.start.x, l1.start.y), (l1.end.x, l1.end.y), (l2.start.x, l2.start.y), (l2.end.x, l2.end.y)]))
         if warped is not None:
             # display_image(warped)
+            # candidate_keyboards.append(warped)
+
             num_black_keys = check_if_candidate_keyboard(warped, maxBlackKeys)
             if num_black_keys >= maxBlackKeys:
-                candidate_keyboards.append(warped)
+                # candidate_keyboards.append(warped)
                 maxBlackKeys = num_black_keys
-
-    for im in candidate_keyboards:
-        detect_black_keys(im, True)
-        # display_image(im)
-    return edged
+                keyboard = warped
+    # for im in candidate_keyboards:
+    #     detect_black_keys(im, True)
+    #     display_image(im)
+    return keyboard
 
 def display_image(image):
     cv2.imshow('', image)
@@ -261,16 +264,16 @@ def readVideo(filename):
     cap = cv2.VideoCapture(filename)
 
     flag = True
+    frameNo = 4
     while(cap.isOpened()):
         ret, frame = cap.read()
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        if flag:
-            cv2.imwrite('frame-3.jpg', frame)
-            flag = False
-
+        # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        if frameNo < 100:
+            cv2.imwrite('frame-'+str(frameNo)+'.jpg', frame)
+            frameNo += 1
         # cv2.imshow('frame', processedFrame(frame))
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     break 
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break 
 
     cap.release()
     cv2.destroyAllWindows()
@@ -282,7 +285,7 @@ def get_first_frame(videoFilepath, frameFilepath):
     flag = True
     while(cap.isOpened()):
         ret, frame = cap.read()
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         if flag:
             cv2.imwrite(frameFilepath, frame)
             flag = False
@@ -303,11 +306,42 @@ def main():
     # img = cv2.imread('img.png')    
     # detect_black_keys(img)
     
-    img = cv2.imread('frame-jazz-tut-1.jpg')    
+    img = cv2.imread('bg.jpg')    
     # img = cv2.imread('frame-3.jpg')    
-    processedFrame(img)
+    keyboard = processedFrame(img)
+    if keyboard is not None:
+        display_image(keyboard)
 
-    # get_first_frame('vid\\sample-jazz-tut-1.mp4', 'frame-jazz-tut-1.jpg')
+    # readVideo('vid\\sample-jazz-tut-1.mp4')
+
+    # bgd = cv2.imread('bg.jpg')
+    # frame = cv2.imread('currFrame.jpg')
+
+    # gray = cv2.cvtColor(bgd, cv2.COLOR_BGR2GRAY)
+    # blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+    # bgd_thresh = cv2.threshold(blurred, 150, 255, cv2.THRESH_BINARY)[1]
+
+    # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+    # frame_thresh = cv2.threshold(blurred, 150, 255, cv2.THRESH_BINARY)[1]
+
+    # positive_diff = frame_thresh-bgd_thresh
+    # positive_diff = (positive_diff > 0) * positive_diff
+    # # display_image(positive_diff)
+    # cv2.imwrite('positive_diff.jpg',positive_diff)
+
+    # gray = cv2.cvtColor(bgd, cv2.COLOR_BGR2GRAY)
+    # blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+    # bgd_thresh = cv2.threshold(blurred, 150, 255, cv2.THRESH_BINARY_INV)[1]
+
+    # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+    # frame_thresh = cv2.threshold(blurred, 150, 255, cv2.THRESH_BINARY_INV)[1]
+
+    # negative_diff = frame_thresh-bgd_thresh
+    # negative_diff = (negative_diff > 0) * negative_diff
+    # # display_image(negative_diff)
+    # cv2.imwrite('negative_diff.jpg', negative_diff)
 
     return
 
