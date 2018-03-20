@@ -306,7 +306,7 @@ def main():
     # img = cv2.imread('img.png')    
     # detect_black_keys(img)
     
-    img = cv2.imread('bg.jpg')    
+    img = cv2.imread('currFrame.jpg')    
     # img = cv2.imread('frame-3.jpg')    
     keyboard = processedFrame(img)
     if keyboard is not None:
