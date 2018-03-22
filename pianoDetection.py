@@ -54,14 +54,22 @@ def detectKeyboard(img):
 	# Resize to 160x120 to make processing faster
 	resized = cv2.resize(img, (160,120), cv2.INTER_AREA)
 	ratio = img.shape[0] / float(resized.shape[0])
-	
+	print ratio
 	# Binarize image
 	gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-	_, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+
+
+	_, thresh = cv2.threshold(gray, 50, 255, cv2.THRESH_BINARY)
+
 	sobely = cv2.Scharr(thresh,cv2.CV_64F,0,1)
-	
+
+	# edges = cv2.Canny(gray,50,100,apertureSize = 3)
+	# sobely = edges
+	#print "sobely", sobely
 	# Identify horizontal lines and filter out lines that are off by more than 5 degrees
-	lines = cv2.HoughLines(sobely.astype(np.uint8), 1, np.pi/2, 100)
+	lines = cv2.HoughLines(sobely.astype(np.uint8), 1, np.pi/180, 5)
+	print "lines", lines
+
 	lines = [l for l in lines if abs(l[0][1]-np.pi/2) < np.pi/180.0*5]
 
 	# Compare brightness of lower one-third and upper one-third to determine the line-pair that crops the keyboard
@@ -117,6 +125,7 @@ def detectKeyboard(img):
 
 		    cv2.line(img,(int(x_plot_1*ratio),int(y_plot_1*ratio)), (int(x_plot_2*ratio),int(y_plot_2*ratio)),(0,255,0),2)
 		    cv2.line(resized,(x_plot_1,y_plot_1),(x_plot_2,y_plot_2),(0,255,0),1)
+
 	cv2.imshow('res',resized)
 	cv2.imwrite('result.jpg', img[int(topX_cached*ratio):int(bottomX_cached*ratio),:,:])
 	cv2.waitKey(0)
@@ -125,9 +134,11 @@ def detectKeyboard(img):
 
 def main():
 	# img = cv2.imread('keyboard-1.jpg')
-	img = cv2.imread('data/pos1.jpg')
+	# img = cv2.imread('data/pos1.jpg')
+	# img = cv2.imread('data/arjun1.JPG')
+	img = cv2.imread('data/pos2.jpg')
 	detectKeyboard(img)
-	
+
 	return
 
 if __name__ == '__main__':

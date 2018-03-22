@@ -5,7 +5,7 @@ import itertools as it
 from utils import *
 from numpy.linalg import norm
 from matplotlib import pyplot as plt
-
+\
 def degree(theta):
     return (180 * theta) / np.pi
 
@@ -28,21 +28,21 @@ def four_point_transform(image, pts):
     # individually
     rect = order_points(pts)
     (tl, tr, br, bl) = rect
- 
+
     # compute the width of the new image, which will be the
     # maximum distance between bottom-right and bottom-left
     # x-coordiates or the top-right and top-left x-coordinates
     widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
     widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
     maxWidth = max(int(widthA), int(widthB))
- 
+
     # compute the height of the new image, which will be the
     # maximum distance between the top-right and bottom-right
     # y-coordinates or the top-left and bottom-left y-coordinates
     heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
     heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
     maxHeight = max(int(heightA), int(heightB))
- 
+
     # now that we have the dimensions of the new image, construct
     # the set of destination points to obtain a "birds eye view",
     # (i.e. top-down view) of the image, again specifying points
@@ -53,11 +53,11 @@ def four_point_transform(image, pts):
         [maxWidth - 1, 0],
         [maxWidth - 1, maxHeight - 1],
         [0, maxHeight - 1]], dtype = "float32")
- 
+
     # compute the perspective transform matrix and then apply it
     M = cv2.getPerspectiveTransform(rect, dst)
     warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
- 
+
     # return the warped image
     return warped
 
@@ -106,7 +106,7 @@ def check_if_candidate_keyboard(image, maxBlackKeys=0):
     blur = cv2.GaussianBlur(lower_third_gray,(5,5),0)
     _,lower_thresh = cv2.threshold(lower_third_gray,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
 
-  
+
     if np.mean(top_thresh) < np.mean(lower_thresh):
         return detect_black_keys(top_third)
     return -1
@@ -190,7 +190,7 @@ def processedFrame(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5,5), 4)
     edged = auto_canny(blurred)
-
+    print "2"
     i = 2
     while True:
         houghLines = cv2.HoughLines(edged, 1, np.pi/180*i, 100)
@@ -201,7 +201,7 @@ def processedFrame(image):
 
     for line in houghLines:
         for rho,theta in line:
-                            
+
             if (theta >= 0.0 and theta < np.pi/180*30):
                 continue
             a = np.cos(theta)
@@ -234,14 +234,18 @@ def processedFrame(image):
     # display_image(image)
 
     pairs = list(it.combinations(lines,2))
-
+    print "3"
     maxBlackKeys = 0
     candidate_keyboards = []
     for l1, l2 in pairs:
+        print "4"
         warped = getPerspectiveTransform(image, np.array([(l1.start.x, l1.start.y), (l1.end.x, l1.end.y), (l2.start.x, l2.start.y), (l2.end.x, l2.end.y)]))
+        print "warped", warped
         if warped is not None:
+            print "5"
             # display_image(warped)
-            num_black_keys = check_if_candidate_keyboard(warped, maxBlackKeys)
+            num_black_keys, black_key_properties = check_if_candidate_keyboard(warped, maxBlackKeys)
+            print "num_black_keys", num_black_keys
             if num_black_keys >= maxBlackKeys:
                 candidate_keyboards.append(warped)
                 maxBlackKeys = num_black_keys
@@ -270,7 +274,7 @@ def readVideo(filename):
 
         # cv2.imshow('frame', processedFrame(frame))
         # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     break 
+        #     break
 
     cap.release()
     cv2.destroyAllWindows()
@@ -295,16 +299,17 @@ def main():
     # img = cv2.imread('data/arjun1.jpg')
     # img = cv2.imread('keyboard-2.jpg')
     img = cv2.imread('testimage2.jpg')
-    # detectKeyboard(img)	
+    #detectKeyboard(img)
     # readVideo('vid-3.mp4')
     # img = cv2.imread('frame-3.jpg')
     # img = cv2.imread('img.png')
-    
-    # img = cv2.imread('img.png')    
+
+    # img = cv2.imread('img.png')
     # detect_black_keys(img)
-    
-    img = cv2.imread('frame-jazz-tut-1.jpg')    
-    # img = cv2.imread('frame-3.jpg')    
+
+    img = cv2.imread('frame-jazz-tut-1.jpg')
+    # img = cv2.imread('frame-3.jpg')
+    print "1"
     processedFrame(img)
 
     # get_first_frame('vid\\sample-jazz-tut-1.mp4', 'frame-jazz-tut-1.jpg')

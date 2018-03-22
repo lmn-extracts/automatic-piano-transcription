@@ -153,12 +153,12 @@ def detectKeyboard(img):
 		    	x_plot_2 = int(img.shape[1])
 		    	y_plot_2 = int(m * x_plot_2 + b)
 
-		    cv2.line(img,(int(x_plot_1*ratio),int(y_plot_1*ratio)), (int(x_plot_2*ratio),int(y_plot_2*ratio)),(0,255,0),2)
-		    cv2.line(resized,(x_plot_1,y_plot_1),(x_plot_2,y_plot_2),(0,255,0),1)
-	cv2.imshow('res',resized)
-	cv2.imwrite('result.jpg', img[int(topX_cached*ratio):int(bottomX_cached*ratio),:,:])
-	cv2.waitKey(0)
-	cv2.destroyAllWindows()
+		    #cv2.line(img,(int(x_plot_1*ratio),int(y_plot_1*ratio)), (int(x_plot_2*ratio),int(y_plot_2*ratio)),(0,255,0),2)
+		    #cv2.line(resized,(x_plot_1,y_plot_1),(x_plot_2,y_plot_2),(0,255,0),1)
+	#cv2.imshow('resized',resized)
+	# cv2.imwrite('result.jpg', img[int(topX_cached*ratio):int(bottomX_cached*ratio),:,:])
+	# cv2.waitKey(0)
+	# cv2.destroyAllWindows()
 	return
 
 def detectShape(c):
@@ -186,18 +186,44 @@ def detectKeys(img, show=False):
 	# convert the resized image to grayscale, blur it slightly,
 	# and threshold it
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+	# cv2.imshow('gray',gray)
+	# cv2.waitKey(0)
 	blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-	thresh = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY_INV)[1]
-
+	# cv2.imshow('blurred',blurred)
+	# cv2.waitKey(0)
+	# edged = cv2.Canny(blurred, 30, 200)
+	# cv2.imshow('edged',edged)
+	# cv2.waitKey(0)
+	thresh = cv2.threshold(blurred, 100, 255, cv2.THRESH_BINARY_INV)[1]
+	# cv2.imshow('thresh',thresh)
+	# cv2.waitKey(0)
 	# find contours in the thresholded image and initialize the
 	# shape detector
-	cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
-	cv2.CHAIN_APPROX_SIMPLE)
-	cnts = cnts[0] if imutils.is_cv2() else cnts[1]
 	sd = ShapeDetector()
+	cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+	cnts = cnts[0] if imutils.is_cv2() else cnts[1]
 
-	num_black_keys = 0
-	black_key_properties = []
+	external_black_key_widths = []
+	for c in cnts:
+	# compute the center of the contour, then detect the name of the
+	# shape using only the contour
+		M = cv2.moments(c)
+		if M["m00"] == 0:
+			continue
+		cX = int((M["m10"] / M["m00"]))
+		cY = int((M["m01"] / M["m00"]))
+		shape = sd.detect(c)
+		#if shape == "rectangle":
+			# multiply the contour (x, y)-coordinates by the resize ratio,
+			# then draw the contours and the name of the shape on the image
+		c = c.astype("int")
+		x,y,w,h = cv2.boundingRect(c)
+		external_black_key_widths.append(w)
+
+	cnts = cv2.findContours(thresh.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+	cnts = cnts[0] if imutils.is_cv2() else cnts[1]
+
+	all_list_black_key_widths = []
 	# loop over the contours
 	for c in cnts:
 	# compute the center of the contour, then detect the name of the
@@ -208,33 +234,49 @@ def detectKeys(img, show=False):
 		cX = int((M["m10"] / M["m00"]))
 		cY = int((M["m01"] / M["m00"]))
 		shape = sd.detect(c)
-		# if shape == "rectangle":
-		num_black_keys += 1
-		# multiply the contour (x, y)-coordinates by the resize ratio,
-		# then draw the contours and the name of the shape on the image
-		c = c.astype("float")
+		#if shape == "rectangle":
+			# multiply the contour (x, y)-coordinates by the resize ratio,
+			# then draw the contours and the name of the shape on the image
 		c = c.astype("int")
-		print("C")
-		#if shape == 'rectangle':
+		# cv2.drawContours(image, [c], -1, (0, 255, 0), 2)
+		# cv2.fillPoly(image, [c], (0, 255, 0))
+		x,y,w,h = cv2.boundingRect(c)
+		all_list_black_key_widths.append(w)
+
+	print "external_black_key_widths",external_black_key_widths
+	print "all_list_black_key_widths", all_list_black_key_widths
+	best_black_key_width = np.bincount(external_black_key_widths+all_list_black_key_widths).argmax()
+
+	black_key_properties = []
+	for c in cnts:
+	# compute the center of the contour, then detect the name of the
+	# shape using only the contour
+		M = cv2.moments(c)
+		if M["m00"] == 0:
+			continue
+		cX = int((M["m10"] / M["m00"]))
+		cY = int((M["m01"] / M["m00"]))
+		shape = sd.detect(c)
+		#if shape == "rectangle":
+			# multiply the contour (x, y)-coordinates by the resize ratio,
+			# then draw the contours and the name of the shape on the image
+		c = c.astype("int")
 		# cv2.drawContours(img, [c], -1, (255,0,0), 3)
 		# cv2.imshow('res',img)
 		# cv2.waitKey(0)
-		#
-		# # cv2.drawContours(image, [c], -1, (0, 255, 0), 2)
-		# cv2.fillPoly(image, [c], (0, 255, 0))
-
+		#pts = np.array([[x,y],[x+w,y+h]])
 		x,y,w,h = cv2.boundingRect(c)
-
-		pts = np.array([[x,y],[x+w,y+h]])
-
-		black_key_properties.append((x,y, w,h))
+		if abs(w-best_black_key_width) <= 1:
+			black_key_properties.append((x,y, w,h))
 		# cv2.rectangle(image, (x,y), (x+w-1, y+h-1), (0,255,0), thickness=-1)
 
 
+	#default black keys is detected from right to left, we reverse to starting from left before output it
+	black_key_properties.sort(key = lambda x: x[0])
 	if show:
 		cv2.imwrite(str(ind) + '.jpg', image)
 		ind+=1
-	return num_black_keys, black_key_properties
+	return black_key_properties
 
 
 
@@ -263,8 +305,9 @@ def detectKeys(img, show=False):
 	# cv2.destroyAllWindows()
 	# return
 
-def assign_while_keys(num_black_keys, black_key_properties):
+def assign_white_keys(black_key_properties):
     #black_keys_pattern = ['D#', 'F#', 'G#', 'A#', 'C#']
+    num_black_keys = len(black_key_properties)
     if num_black_keys < 5:
         return
     num_pattern = int(num_black_keys/5)
@@ -276,13 +319,14 @@ def assign_while_keys(num_black_keys, black_key_properties):
 
     diffs = []
     for i in range(5):
-        diff = -(black_key_mid_pts[i+1] - black_key_mid_pts[i])
+        diff = abs(black_key_mid_pts[i+1] - black_key_mid_pts[i])
         diffs.append((diff, i))
     print("diffs", diffs)
     diffs.sort(key = lambda x: x[0])
     big_diffs_idx1, big_diffs_idx2 = diffs[-1][1], diffs[-2][1]
     sorted_diffs_idx = sorted([big_diffs_idx1, big_diffs_idx2])
     print(sorted_diffs_idx)
+
 
     if abs(big_diffs_idx1 - big_diffs_idx2) == 2:
         if sorted_diffs_idx[0] == 0:
@@ -296,41 +340,71 @@ def assign_while_keys(num_black_keys, black_key_properties):
             pattern = ['D#', 'F#', 'G#', 'A#', 'C#']
         elif sorted_diffs_idx[0] == 1:
             pattern = ['C#', 'D#', 'F#', 'G#', 'A#']
-	pattern.reverse()
+	#pattern.reverse()
     #print(pattern)
     return pattern
 
-def detect_white_keys(img, num_black_keys, black_key_properties, pattern):
+def detect_white_keys(img, black_key_properties, pattern):
+	num_black_keys = len(black_key_properties)
 	num_pattern = num_black_keys/5
 	black_notes = pattern*num_pattern + pattern[:num_black_keys%5]
 	print "black_notes", black_notes
 	for i in range(num_black_keys):
 		x,y,w,h = black_key_properties[i]
-		cv2.putText(img, black_notes[i], (x+w/2,y+h/2), 4, 0.25, (0,0,150))
+		#cv2.putText(img, black_notes[i], (x+w/2,y+h/2), 4, 0.25, (0,0,150))
 		#cv2.putText(img, '#', (x+w/2,y+h/2+1), 4, 0.25, (0,0,150))
 
-	cv2.imshow('res',img)
- 	cv2.waitKey(0)
+	# cv2.imshow('res',img)
+	# cv2.waitKey(0)
+
+	img_labels = np.copy(img)
+
+	dividing_lines = []
 	for i in range(num_black_keys):
 		x,y,w,h = black_key_properties[i]
 		pt1 = (int(x+w/2), y)
 		pt2 = (int(x+w/2), img.shape[0])
-		cv2.line(img,pt1,pt2,(0,255,0),1)
-		#cv2.clipLine(img, pt1, pt2)
+		#cv2.line(img,pt1,pt2,(0,255,0),1)
 
-		if i>0 and black_notes[i] == 'F#' or 'C#':
+
+		if i>0 and (black_notes[i] in ['F#', 'C#']):
 			prevx, prevy, prevw, prevh = black_key_properties[i-1]
-
+			print "green line", i, (x+w/2.+ prevx+prevw/2.)/2.
 			pt1 = (int((x+w/2.+ prevx+prevw/2.)/2.), int((y+prevy)/2.))
 			pt2 = (int((x+w/2.+ prevx+prevw/2.)/2.), img.shape[0])
-			cv2.line(img,pt1,pt2,(0,255,0),1)
-	cv2.imshow('res',img)
- 	cv2.waitKey(0)
+			# cv2.line(img,pt1,pt2,(0,255,0),1)
+
+	upper_white = []
+	lower_white = []
+	for i in range(1, num_black_keys):
+		x,y,w,h = black_key_properties[i]
+		prevx, prevy, prevw, prevh = black_key_properties[i-1]
+		if black_notes[i] in ['F#', 'C#']:
+			whitex = prevx+prevw
+			whitey = prevy
+			whitew = (x-prevx-prevw)/2
+			whiteh = prevh
+			upper_white.append((whitex, whitey, whitew, whiteh))
+			lower_white.append((prevx+prevw/2,min(y+h,prevy+prevh), ((x+w/2)- (prevx+prevw/2))/2, img.shape[0]- min(y+h,prevy+prevh) ))
+			upper_white.append((whitex+whitew, whitey, whitew, whiteh))
+			lower_white.append((prevx+prevw/2+whitew,min(y+h,prevy+prevh), ((x+w/2)- (prevx+prevw/2))/2, img.shape[0]- min(y+h,prevy+prevh) ))
+		else:
+			whitex = prevx+prevw
+			whitey = prevy
+			whitew = x-prevx-prevw
+			whiteh = prevh
+			upper_white.append((whitex, whitey, whitew, whiteh))
+			lower_white.append((prevx+prevw/2,min(y+h,prevy+prevh), (x+w/2)- (prevx+prevw/2), img.shape[0]- min(y+h,prevy+prevh) ))
+
+	# cv2.imshow('res',img)
+	# cv2.waitKey(0)
+
+	return upper_white, lower_white
 
 def main():
 	#img = cv2.imread('keyboard-2.jpg')
 	# detectKeyboard(img)
-	img = cv2.imread('img.png')
+	img = cv2.imread('testimage2.jpg')
 	# gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 	# blurred = cv2.GaussianBlur(gray, (3,3), 0)
 	# thresh = cv2.threshold(blurred, 60, 255, cv2.THRESH_BINARY)[1]
@@ -345,11 +419,32 @@ def main():
 	# cv2.imshow('sob',img_erosion)
 	# cv2.waitKey(0)
 	# cv2.destroyAllWindows()
-	num_black_keys, black_key_properties = detectKeys(img)
-	pattern = assign_while_keys(num_black_keys, black_key_properties)
-	detect_white_keys(img, num_black_keys, black_key_properties, pattern)
-	print(pattern)
 
+
+	num_black_keys, black_key_properties = detectKeys(img)
+	pattern = assign_white_keys(num_black_keys, black_key_properties)
+	upper_white, lower_white = detect_white_keys(img, num_black_keys, black_key_properties, pattern)
+	background_image = cv2.imread('background.jpg')
+
+	num_white_keys = len(upper_white)
+	frames_features = np.empty((0,0), int)
+	for frame in frames:
+		substraction = frame - background_image
+		frame_features = np.empty((0,0), int)
+		for i in range(num_black_keys):
+			x,y,w,h = black_key_properties[i]
+			black_key_posi = substraction[y:y+h, x:x+w]
+			np.hstack((frame_features, black_keys_posi.flatten()))
+		for i in range(num_white_keys):
+			x1,y1,w1,h1 = upper_white[i]
+			x2,y2,w2,h2 = lower_white[i]
+			white_key_neg1 = substraction[y1:y1+h1, x1:x1+w1]
+			np.hstack((frame_features, white_key_neg1.flatten()))
+			white_key_neg2 = substraction[y2:y2+h2, x2:x2+w2]
+			np.hstack((frame_features, white_key_neg2.flatten()))
+		np.vstack((frames_features, frame_features))
+	return frames_features
+	print(pattern)
 
 	return
 

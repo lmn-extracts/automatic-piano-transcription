@@ -43,34 +43,34 @@ def get_blobs(top_third):
     plt.imshow(top_thresh, 'gray')
     plt.show()
     # params = cv2.SimpleBlobDetector_Params()
- 
+
     # # Change thresholds
     # params.minThreshold = 0;
     # params.maxThreshold = 50;
-     
+
     # # Filter by Area.
     # # params.filterByArea = True
     # # params.minArea = 1500
-     
+
     # # Filter by Circularity
     # params.filterByCircularity = True
     # params.maxCircularity = 0.785
-     
+
     # # Filter by Convexity
     # params.filterByConvexity = True
     # params.minConvexity = 0.87
-     
+
     # # Filter by Inertia
     # params.filterByInertia = True
     # params.maxInertiaRatio = 0.2
-     
+
     # # Create a detector with the parameters
     # detector = cv2.SimpleBlobDetector_create(params)
     detector = cv2.SimpleBlobDetector_create()
 
     # Detect blobs.
     keypoints = detector.detect(top_third_gray)
-     
+
     print keypoints
     # Draw detected blobs as red circles.
     # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures the size of the circle corresponds to the size of blob
@@ -85,7 +85,7 @@ def get_blobs(top_third):
 class ShapeDetector:
     def __init__(self):
         pass
- 
+
     def detect(self, c):
         # initialize the shape name and approximate the contour
         shape = "unidentified"
@@ -95,7 +95,7 @@ class ShapeDetector:
         # if the shape is a triangle, it will have 3 vertices
         if len(approx) == 3:
             shape = "triangle"
- 
+
         # if the shape has 4 vertices, it is either a square or
         # a rectangle
         elif len(approx) == 4:
@@ -103,19 +103,19 @@ class ShapeDetector:
             # bounding box to compute the aspect ratio
             (x, y, w, h) = cv2.boundingRect(approx)
             ar = w / float(h)
- 
+
             # a square will have an aspect ratio that is approximately
             # equal to one, otherwise, the shape is a rectangle
             shape = "square" if ar >= 0.95 and ar <= 1.05 else "rectangle"
- 
+
         # if the shape is a pentagon, it will have 5 vertices
         elif len(approx) == 5:
             shape = "pentagon"
- 
+
         # otherwise, we assume the shape is a circle
         else:
             shape = "circle"
- 
+
         # return the name of the shape
         return shape
 
@@ -128,7 +128,7 @@ def detect_black_keys(img, show=False):
         Maximum number of black keys found
     '''
     image = img[10:,:].copy()
-    
+
 
     if show:
         ind = 0
@@ -140,7 +140,7 @@ def detect_black_keys(img, show=False):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     thresh = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY_INV)[1]
-     
+
     # find contours in the thresholded image and initialize the
     # shape detector
     cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
@@ -149,9 +149,10 @@ def detect_black_keys(img, show=False):
     sd = ShapeDetector()
 
     num_black_keys = 0
-
+    black_key_pts = []
     # loop over the contours
     for c in cnts:
+        print ("c", c)
         # compute the center of the contour, then detect the name of the
         # shape using only the contour
         M = cv2.moments(c)
@@ -170,11 +171,51 @@ def detect_black_keys(img, show=False):
         cv2.fillPoly(image, [c], (0, 255, 0))
 
         x,y,w,h = cv2.boundingRect(c)
+
         pts = np.array([[x,y],[x+w,y+h]])
+
+        black_key_corners.append((x,y, w,h))
         # cv2.rectangle(image, (x,y), (x+w-1, y+h-1), (0,255,0), thickness=-1)
 
 
         if show:
             cv2.imwrite(str(ind) + '.jpg', image)
             ind+=1
-    return num_black_keys
+    return num_black_keys, black_key_properties
+
+def assign_while_keys(num_black_keys, black_key_properties):
+    #black_keys_pattern = ['D#', 'F#', 'G#', 'A#', 'C#']
+    if num_black_keys < 5:
+        return
+    num_pattern = int(num_black_keys/5)
+    black_key_mid_pts = []
+    for i in range(6):
+        black_key_property = black_key_properties[i]
+        black_key_mid_pt = (black_key_property[0]+ black_key_property[2])/2.
+        black_key_mid_pts.append(black_key_mid_pt)
+
+    diffs = []
+    for i in range(5):
+        diff = black_key_mid_pts[i+1] - black_key_mid_pts[i]
+        diffs.append((diff, i))
+
+    diffs.sort(lambda x: x[0])
+    big_diffs_idx1, big_diffs_idx2 = diffs[-1][1], diffs[-2][1]
+    sorted_diffs_idx = sorted[big_diffs_idx1, big_diffs_idx2]
+    if abs(big_diffs_idx1 - big_diffs_idx2) == 2:
+        if sorted_diffs_idx[0] == 0:
+            patten = ['A#', 'C#', 'D#', 'F#', 'G#']
+        elif sorted_diffs_idx[0] == 1:
+            patten = ['G#', 'A#', 'C#', 'D#', 'F#']
+        elif sorted_diffs_idx[0] == 2:
+            patten = ['F#', 'G#', 'A#', 'C#', 'D#']
+    elif abs(big_diffs_idx1 - big_diffs_idx2) == 3:
+        if sorted_diffs_idx[0] == 0:
+            pattern = ['D#', 'F#', 'G#', 'A#', 'C#']
+        elif sorted_diffs_idx[0] == 1:
+            pattern = ['C#', 'D#', 'F#', 'G#', 'A#']
+    print(pattern)
+    return pattern
+
+def find_white_keys():
+    return
