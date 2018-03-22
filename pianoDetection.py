@@ -70,7 +70,7 @@ def detectKeyboard(img):
 	lines = cv2.HoughLines(sobely.astype(np.uint8), 1, np.pi/180, 5)
 	print "lines", lines
 
-	lines = [l for l in lines if abs(l[0][1]-np.pi/2) < np.pi/180.0*5]
+	#lines = [l for l in lines if abs(l[0][1]-np.pi/2) < np.pi/180.0*5]
 
 	# Compare brightness of lower one-third and upper one-third to determine the line-pair that crops the keyboard
 	pairs = list(it.combinations(lines,2))

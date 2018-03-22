@@ -193,6 +193,7 @@ def main():
     black_key_properties = detectKeys(background_img)
     print "detectKeys black_key_properties", black_key_properties
     pattern = assign_white_keys(black_key_properties)
+    print "pattern", pattern
     upper_white_properties, lower_white_properties = detect_white_keys(background_img, black_key_properties, pattern)
     best_note_guess, black_or_white = detect_note(keyboard_img, background_img, black_key_properties, upper_white_properties)
     #print best_note_guess
