@@ -2,6 +2,9 @@ import numpy as np
 import cv2
 import itertools as it
 import imutils
+
+notes_dict = {'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#':10, 'B': 11, 'C': 12}
+
 class ShapeDetector:
     def __init__(self):
         pass
@@ -177,26 +180,13 @@ def detectKeys(img, show=False):
 	# resized = cv2.resize(img, (160,120), cv2.INTER_AREA)
 	# ratio = img.shape[0] / float(resized.shape[0])
 	image = img[10:,:].copy()
-	#
-	# if show:
-	# 	ind = 0
-	# 	cv2.imwrite(str(ind) + '.jpg', image)
-	# 	ind+=1
-	#
+	ind = 0
+
 	# convert the resized image to grayscale, blur it slightly,
 	# and threshold it
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-	# cv2.imshow('gray',gray)
-	# cv2.waitKey(0)
 	blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-	# cv2.imshow('blurred',blurred)
-	# cv2.waitKey(0)
-	# edged = cv2.Canny(blurred, 30, 200)
-	# cv2.imshow('edged',edged)
-	# cv2.waitKey(0)
 	thresh = cv2.threshold(blurred, 100, 255, cv2.THRESH_BINARY_INV)[1]
-	# cv2.imshow('thresh',thresh)
-	# cv2.waitKey(0)
 	# find contours in the thresholded image and initialize the
 	# shape detector
 	sd = ShapeDetector()
@@ -213,11 +203,13 @@ def detectKeys(img, show=False):
 		cX = int((M["m10"] / M["m00"]))
 		cY = int((M["m01"] / M["m00"]))
 		shape = sd.detect(c)
-		#if shape == "rectangle":
-			# multiply the contour (x, y)-coordinates by the resize ratio,
-			# then draw the contours and the name of the shape on the image
 		c = c.astype("int")
+		# cv2.drawContours(image, [c], -1, (0, 255, 0), 2)
+		# cv2.fillPoly(image, [c], (0, 255, 0))
+		# cv2.imshow('im', image)
+		# cv2.waitKey(0)
 		x,y,w,h = cv2.boundingRect(c)
+		# print x,y,w,h
 		external_black_key_widths.append(w)
 
 	cnts = cv2.findContours(thresh.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -240,11 +232,13 @@ def detectKeys(img, show=False):
 		c = c.astype("int")
 		# cv2.drawContours(image, [c], -1, (0, 255, 0), 2)
 		# cv2.fillPoly(image, [c], (0, 255, 0))
+		# cv2.imshow('im', image)
+		# cv2.waitKey(0)
 		x,y,w,h = cv2.boundingRect(c)
 		all_list_black_key_widths.append(w)
 
-	print "external_black_key_widths",external_black_key_widths
-	print "all_list_black_key_widths", all_list_black_key_widths
+	# print "external_black_key_widths",external_black_key_widths
+	# print "all_list_black_key_widths", all_list_black_key_widths
 	best_black_key_width = np.bincount(external_black_key_widths+all_list_black_key_widths).argmax()
 
 	black_key_properties = []
@@ -257,19 +251,9 @@ def detectKeys(img, show=False):
 		cX = int((M["m10"] / M["m00"]))
 		cY = int((M["m01"] / M["m00"]))
 		shape = sd.detect(c)
-		#if shape == "rectangle":
-			# multiply the contour (x, y)-coordinates by the resize ratio,
-			# then draw the contours and the name of the shape on the image
-		c = c.astype("int")
-		# cv2.drawContours(img, [c], -1, (255,0,0), 3)
-		# cv2.imshow('res',img)
-		# cv2.waitKey(0)
-		#pts = np.array([[x,y],[x+w,y+h]])
 		x,y,w,h = cv2.boundingRect(c)
 		if abs(w-best_black_key_width) <= 1:
-			black_key_properties.append((x,y, w,h))
-		# cv2.rectangle(image, (x,y), (x+w-1, y+h-1), (0,255,0), thickness=-1)
-
+			black_key_properties.append((x,y, w,h+10))
 
 	#default black keys is detected from right to left, we reverse to starting from left before output it
 	black_key_properties.sort(key = lambda x: x[0])
@@ -277,33 +261,6 @@ def detectKeys(img, show=False):
 		cv2.imwrite(str(ind) + '.jpg', image)
 		ind+=1
 	return black_key_properties
-
-
-
-	# gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-	# blurred = cv2.GaussianBlur(gray, (1,1), 0)
-	# thresh = cv2.threshold(blurred, 60, 255, cv2.THRESH_BINARY)[1]
-	# kernel = np.ones((5,5), np.uint8)
-	# thresh = cv2.erode(thresh,kernel,iterations=2)
-	#
-	# cnts = cv2.findContours(thresh.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-	# print len(cnts[0])
-	# for c  in cnts[1]:
-	# 	shape = detectShape(c)
-	# 	print shape
-	# 	c = c.astype("float")
-	# 	c = c.astype(int)
-	# 	if shape == 'rectangle':
-	# 		cv2.drawContours(img, [c], -1, (255,0,0), 3)
-	# 		cv2.imshow('res',img)
-	# 		cv2.waitKey(0)
-	#
-	#
-	# cv2.imshow('res',thresh)
-	# cv2.imshow('rese',img)
-	# cv2.waitKey(0)
-	# cv2.destroyAllWindows()
-	# return
 
 def assign_white_keys(black_key_properties):
     #black_keys_pattern = ['D#', 'F#', 'G#', 'A#', 'C#']
@@ -321,13 +278,13 @@ def assign_white_keys(black_key_properties):
     for i in range(5):
         diff = abs(black_key_mid_pts[i+1] - black_key_mid_pts[i])
         diffs.append((diff, i))
-    print("diffs", diffs)
+    # print("diffs", diffs)
     diffs.sort(key = lambda x: x[0])
     big_diffs_idx1, big_diffs_idx2 = diffs[-1][1], diffs[-2][1]
     sorted_diffs_idx = sorted([big_diffs_idx1, big_diffs_idx2])
-    print(sorted_diffs_idx)
+    # print(sorted_diffs_idx)
 
-
+    pattern = None
     if abs(big_diffs_idx1 - big_diffs_idx2) == 2:
         if sorted_diffs_idx[0] == 0:
             pattern = ['A#', 'C#', 'D#', 'F#', 'G#']
@@ -348,7 +305,8 @@ def detect_white_keys(img, black_key_properties, pattern):
 	num_black_keys = len(black_key_properties)
 	num_pattern = num_black_keys/5
 	black_notes = pattern*num_pattern + pattern[:num_black_keys%5]
-	print "black_notes", black_notes
+
+	img_for_white = img.copy()
 	for i in range(num_black_keys):
 		x,y,w,h = black_key_properties[i]
 		#cv2.putText(img, black_notes[i], (x+w/2,y+h/2), 4, 0.25, (0,0,150))
@@ -364,42 +322,68 @@ def detect_white_keys(img, black_key_properties, pattern):
 		x,y,w,h = black_key_properties[i]
 		pt1 = (int(x+w/2), y)
 		pt2 = (int(x+w/2), img.shape[0])
-		#cv2.line(img,pt1,pt2,(0,255,0),1)
+		cv2.line(img,pt1,pt2,(0,255,0),1)
 
 
 		if i>0 and (black_notes[i] in ['F#', 'C#']):
 			prevx, prevy, prevw, prevh = black_key_properties[i-1]
-			print "green line", i, (x+w/2.+ prevx+prevw/2.)/2.
+			# print "green line", i, (x+w/2.+ prevx+prevw/2.)/2.
 			pt1 = (int((x+w/2.+ prevx+prevw/2.)/2.), int((y+prevy)/2.))
 			pt2 = (int((x+w/2.+ prevx+prevw/2.)/2.), img.shape[0])
-			# cv2.line(img,pt1,pt2,(0,255,0),1)
+			cv2.line(img,pt1,pt2,(0,255,0),1)
 
+	white_notes = []
 	upper_white = []
 	lower_white = []
+	# assume centre octave visible in the frame is Octave 4
+	octave = 3
 	for i in range(1, num_black_keys):
 		x,y,w,h = black_key_properties[i]
 		prevx, prevy, prevw, prevh = black_key_properties[i-1]
+		if black_notes[i] == 'C#':
+			octave += 1
 		if black_notes[i] in ['F#', 'C#']:
 			whitex = prevx+prevw
 			whitey = prevy
 			whitew = (x-prevx-prevw)/2
 			whiteh = prevh
+			if black_notes[i] == 'F#':
+				white_notes.append('E' + str(octave))
+				white_notes.append('F' + str(octave))
+			else:
+				white_notes.append('B'+ str(octave-1))
+				white_notes.append('C' + str(octave))
 			upper_white.append((whitex, whitey, whitew, whiteh))
-			lower_white.append((prevx+prevw/2,min(y+h,prevy+prevh), ((x+w/2)- (prevx+prevw/2))/2, img.shape[0]- min(y+h,prevy+prevh) ))
+			lower_white.append((prevx+prevw/2, min(y+h,prevy+prevh), ((x+w/2)- (prevx+prevw/2))/2, img.shape[0]- min(y+h,prevy+prevh)))			
+			cv2.rectangle(img_for_white, (whitex, whitey), (whitex+whitew, whitey+whiteh), (0,255,0), 1) 
+			cv2.rectangle(img_for_white, (prevx+prevw/2, min(y+h,prevy+prevh)), (prevx+prevw/2 + ((x+w/2)- (prevx+prevw/2))/2, min(y+h,prevy+prevh) + img.shape[0]- min(y+h,prevy+prevh) - 1), (0,0,255),1)
+
 			upper_white.append((whitex+whitew, whitey, whitew, whiteh))
-			lower_white.append((prevx+prevw/2+whitew,min(y+h,prevy+prevh), ((x+w/2)- (prevx+prevw/2))/2, img.shape[0]- min(y+h,prevy+prevh) ))
+			lower_white.append((prevx+prevw/2+whitew, min(y+h,prevy+prevh), ((x+w/2)- (prevx+prevw/2))/2, img.shape[0]- min(y+h,prevy+prevh) ))
+			cv2.rectangle(img_for_white, (whitex+whitew, whitey), (whitex+2*whitew, whitey+whiteh), (0,255,0), 1) 			
+			cv2.rectangle(img_for_white, (prevx+prevw/2+2*whitew, min(y+h,prevy+prevh)), (prevx+prevw/2+2*whitew + ((x+w/2)- (prevx+prevw/2))/2,  min(y+h,prevy+prevh) + img.shape[0]- min(y+h,prevy+prevh) -1), (0,0,255), 1)
+
 		else:
+			black_note = notes_dict[black_notes[i-1]]
+			white_note = notes_dict.keys()[notes_dict.values().index(black_note+1)]
+			white_notes.append(white_note + str(octave))
 			whitex = prevx+prevw
 			whitey = prevy
 			whitew = x-prevx-prevw
 			whiteh = prevh
 			upper_white.append((whitex, whitey, whitew, whiteh))
-			lower_white.append((prevx+prevw/2,min(y+h,prevy+prevh), (x+w/2)- (prevx+prevw/2), img.shape[0]- min(y+h,prevy+prevh) ))
+			cv2.rectangle(img_for_white, (whitex, whitey), (whitex+whitew, whitey+whiteh), (0,255,0), 1)			
+			lower_white.append((prevx+prevw/2, min(y+h,prevy+prevh), (x+w/2)- (prevx+prevw/2), img.shape[0]- min(y+h,prevy+prevh) ))
+			cv2.rectangle(img_for_white, (prevx+prevw/2,min(y+h,prevy+prevh)), (prevx+prevw/2 + (x+w/2)- (prevx+prevw/2), min(y+h,prevy+prevh) + img.shape[0]- min(y+h,prevy+prevh)-1), (0,0,255), 1)
 
-	# cv2.imshow('res',img)
-	# cv2.waitKey(0)
-
-	return upper_white, lower_white
+	cv2.imwrite('white-key-detection.jpg',img)
+	cv2.imwrite('white-quadrilatera.jpg', img_for_white)
+	octave = 3
+	for i,n in enumerate(black_notes):
+		if n == 'C#':
+			octave += 1
+ 		black_notes[i] = n + str(octave)
+	return upper_white, lower_white, white_notes, black_notes
 
 def main():
 	#img = cv2.imread('keyboard-2.jpg')

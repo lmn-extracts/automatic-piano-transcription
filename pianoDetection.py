@@ -1,6 +1,16 @@
 import numpy as np
 import cv2
+import os
+import sys
 import itertools as it
+from keyDetection import *
+from noteDetection import *
+from detectionUtils import *
+
+FRAMES_DIR = 'frames'
+VIDEO_PATH = 'vid-3.mp4'
+max_frame_num = 0
+
 
 def get_Y_indices(line1,line2,img):
 	for rho,theta in line1:
@@ -132,12 +142,63 @@ def detectKeyboard(img):
 	cv2.destroyAllWindows()
 	return
 
+
+
+def readVideo(filename):
+    cap = cv2.VideoCapture(filename)
+
+    flag = True
+    background = None
+    frame_count = 0
+    while(cap.isOpened()):
+        ret, frame = cap.read()
+        if frame is None:
+        	break
+        # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        if flag:
+            cv2.imwrite('frame-3.jpg', frame)            
+            background = frame
+            flag = False
+
+        cv2.imshow('vid', processedFrame(frame))
+        cv2.imwrite(FRAMES_DIR + '\\frame'+str(frame_count)+'.jpg', processedFrame(frame))
+        frame_count += 1
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+        # if frame_count > 50:
+        # 	print detect_notes_in_frame(frame, background)
+    cap.release()
+    cv2.destroyAllWindows()
+    max_frame_num = frame_count
+    return
+
+def display_notes(frame_dir):
+	frame_num = 50
+	notes = []
+	background = cv2.imread(FRAMES_DIR + '\\frame5.jpg',1)
+	print 'Printing Frame Number, Note'
+	while True:
+		frame = cv2.imread(FRAMES_DIR + '\\frame' + str(frame_num) + '.jpg',1)
+
+		if frame is None:
+			break
+		note = detect_notes_in_frame(frame, background)
+		if note != 'C#8':
+			print frame_num, note
+		notes.append(note)
+
+		frame_num += 1
+	with open('detected.txt', 'w') as f:
+		f.write('\n'.join(notes))
+	return
+
 def main():
 	# img = cv2.imread('keyboard-1.jpg')
 	# img = cv2.imread('data/pos1.jpg')
 	# img = cv2.imread('data/arjun1.JPG')
-	img = cv2.imread('data/pos2.jpg')
-	detectKeyboard(img)
+	# readVideo(VIDEO_PATH)
+	display_notes(FRAMES_DIR)
+
 
 	return
 

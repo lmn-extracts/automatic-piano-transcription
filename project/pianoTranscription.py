@@ -10,13 +10,13 @@ from NoteDetection import *
 #     v2f = VideoToFramesConverter()
 #     v2f.load_video_to_frames()
 
-convert_video_to_frames(video_dir, frames_dir)
-images = get_first_k_frames(frames_dir, k = 5 )
+# convert_video_to_frames(video_dir, frames_dir)
+# images = get_first_k_frames(frames_dir, k = 5 )
 
 
-background_img = images[0]
-# background_img= cv2.imread('background.jpg')
-# keyboard_img = cv2.imread('keyboard.jpg')
+# background_img = images[0]
+background_img= cv2.imread('background.jpg')
+keyboard_img = cv2.imread('keyboard.jpg')
 black_key_properties = detect_black_keys(background_img)
 black_keys_pattern, black_notes = assign_black_keys(black_key_properties)
 upper_white_properties, lower_white_properties = detect_white_keys(background_img, black_key_properties, black_keys_pattern, black_notes)
